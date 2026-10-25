@@ -26,22 +26,32 @@
         />
         <button
           id="clearSearch"
-          class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700"
+          title="Сбросить поиск"
         >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
+          </svg>
           Сброс
         </button>
         <button
           id="exportBtn"
-          class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-sky-200 bg-sky-50 px-3 py-2 text-sm font-medium text-sky-700 hover:bg-sky-100"
           title="Скачать копию данных в JSON"
         >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5M16.5 12 12 16.5m0 0L7.5 12m4.5 4.5V3" />
+          </svg>
           Экспорт
         </button>
         <button
           id="importBtn"
-          class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+          class="inline-flex items-center gap-1.5 rounded-xl border border-violet-200 bg-violet-50 px-3 py-2 text-sm font-medium text-violet-700 hover:bg-violet-100"
           title="Загрузить данные из JSON-файла"
         >
+          <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4">
+            <path stroke-linecap="round" stroke-linejoin="round" d="M3 16.5v2.25A2.25 2.25 0 0 0 5.25 21h13.5A2.25 2.25 0 0 0 21 18.75V16.5m-13.5-9L12 3m0 0 4.5 4.5M12 3v13.5" />
+          </svg>
           Импорт
         </button>
         <button
@@ -159,28 +169,28 @@
         title: 'Новая',
         accent: 'bg-sky-500',
         badge: 'bg-sky-100 text-sky-700',
-        footer: 'border-t border-sky-100 bg-sky-50 text-sky-900'
+        footer: 'border-t-2 border-sky-200 bg-sky-100/70 text-sky-900'
       },
       {
         id: 'in-progress',
         title: 'В работе',
         accent: 'bg-amber-500',
         badge: 'bg-amber-100 text-amber-700',
-        footer: 'border-t border-amber-100 bg-amber-50 text-amber-900'
+        footer: 'border-t-2 border-amber-200 bg-amber-100/70 text-amber-900'
       },
       {
         id: 'confirmed',
         title: 'Подтверждено',
         accent: 'bg-violet-500',
         badge: 'bg-violet-100 text-violet-700',
-        footer: 'border-t border-violet-100 bg-violet-50 text-violet-900'
+        footer: 'border-t-2 border-violet-200 bg-violet-100/70 text-violet-900'
       },
       {
         id: 'done',
         title: 'Завершено',
         accent: 'bg-emerald-500',
         badge: 'bg-emerald-100 text-emerald-700',
-        footer: 'border-t border-emerald-100 bg-emerald-50 text-emerald-900'
+        footer: 'border-t-2 border-emerald-200 bg-emerald-100/70 text-emerald-900'
       }
     ];
 
@@ -316,12 +326,23 @@
           return;
         }
 
+        // Тап по селекту переноса не должен открывать редактирование.
+        if (event.target.closest('[data-move-select]')) return;
+
         // Клик по карточке (не по крестику) — открываем редактирование.
         const card = event.target.closest('[data-id]');
         if (!card) return;
 
         const lead = leads.find((item) => item.id === card.dataset.id);
         if (lead) openModal(lead);
+      });
+
+      // Мобильный перенос: смена статуса через селект на карточке.
+      board.addEventListener('change', (event) => {
+        const select = event.target.closest('[data-move-select]');
+        if (!select) return;
+
+        moveLead(select.dataset.moveSelect, select.value);
       });
     }
 
@@ -465,7 +486,10 @@
           </div>
 
           <div class="flex items-center justify-between px-4 py-2 ${status.footer}">
-            <span class="text-xs font-semibold uppercase tracking-wide opacity-70">Сумма</span>
+            <span class="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wide opacity-80">
+              <span class="h-2 w-2 rounded-full ${status.accent}"></span>
+              Сумма
+            </span>
             <span class="text-sm font-bold">
               ${formatMoney(visibleSum)}${searchQuery ? `<span class="font-normal opacity-60"> из ${formatMoney(totalSum)}</span>` : ''}
             </span>
@@ -504,6 +528,18 @@
             <span class="text-slate-500">${formatDate(lead.date)}</span>
             <span class="font-semibold">${formatMoney(lead.amount)}</span>
           </div>
+
+          <select
+            data-move-select="${escapeHtml(lead.id)}"
+            class="mt-3 w-full rounded-lg border border-slate-200 bg-slate-50 px-2 py-1.5 text-xs font-medium text-slate-600 focus:outline-none md:hidden"
+            title="Перенести в статус"
+          >
+            ${STATUSES
+              .map((status) =>
+                `<option value="${status.id}" ${status.id === lead.status ? 'selected' : ''}>${status.title}</option>`
+              )
+              .join('')}
+          </select>
         </article>
       `;
     }
