@@ -1,335 +1,550 @@
 <!DOCTYPE html>
 <html lang="ru">
 <head>
-<meta charset="UTF-8" />
-<meta name="viewport" content="width=device-width, initial-scale=1.0" />
-<title>Трекер заявок</title>
-<script src="https://cdn.tailwindcss.com"></script>
-<script>
-  tailwind.config = {
-    theme: {
-      extend: {
-        colors: {
-          ink: "#1f2937",
-        },
-        borderRadius: { card: "12px" },
-        boxShadow: {
-          soft: "0 1px 2px rgba(16,24,40,.04), 0 1px 3px rgba(16,24,40,.06)",
-          lift: "0 4px 12px rgba(16,24,40,.08), 0 8px 24px rgba(16,24,40,.06)",
-        },
-      },
-    },
-  };
-</script>
-<style>
-  :root { color-scheme: light; }
-  html, body { height: 100%; }
-  body {
-    font-family: "Segoe UI", system-ui, -apple-system, Roboto, "Helvetica Neue", Arial, sans-serif;
-    background: #f8fafc;
-    color: #1f2937;
-    -webkit-font-smoothing: antialiased;
-  }
-
-  /* entrance + move animation for cards */
-  @keyframes cardIn {
-    from { opacity: 0; transform: translateY(6px) scale(.99); }
-    to   { opacity: 1; transform: translateY(0) scale(1); }
-  }
-  .card { animation: cardIn .28s cubic-bezier(.2,.8,.25,1) both; }
-  .card.just-moved { animation: cardMove .34s cubic-bezier(.2,.8,.25,1); border-color: #3b82f6; }
-  @keyframes cardMove {
-    0% { box-shadow: 0 0 0 0 rgba(59,130,246,.35); transform: translateY(0); }
-    50% { box-shadow: 0 0 0 4px rgba(59,130,246,.18); transform: translateY(-3px); }
-    100% { box-shadow: 0 0 0 0 rgba(59,130,246,.0); transform: translateY(0); }
-  }
-
-  /* modal */
-  .modal-backdrop { animation: fadeIn .18s ease both; }
-  .modal-panel { animation: modalPop .22s cubic-bezier(.2,.9,.3,1.2) both; }
-  @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
-  @keyframes modalPop { from { opacity: 0; transform: translateY(10px) scale(.97); } to { opacity: 1; transform: none; } }
-
-  /* drop target highlight */
-  .drop-zone.drag-over { background: #eff6ff; outline: 2px dashed #93c5fd; outline-offset: -2px; }
-
-  input, select { min-height: 44px; }
-  @media (prefers-reduced-motion: reduce) {
-    .card, .card.just-moved, .modal-backdrop, .modal-panel { animation: none !important; }
-  }
-</style>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Мини-CRM — Канбан</title>
+  <script src="https://cdn.tailwindcss.com"></script>
 </head>
-<body class="min-h-screen">
-  <!-- Header -->
-  <header class="sticky top-0 z-20 bg-white/80 backdrop-blur border-b border-gray-200">
-    <div class="mx-auto max-w-7xl px-4 sm:px-6 py-4 flex items-center justify-between gap-4">
-      <div class="flex items-center gap-3 min-w-0">
-        <div class="h-9 w-9 rounded-card bg-blue-500 flex items-center justify-center shrink-0">
-          <svg width="18" height="18" viewBox="0 0 24 24" fill="none" stroke="#fff" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-            <path d="M4 6h16M4 12h10M4 18h7" />
-          </svg>
-        </div>
-        <div class="min-w-0">
-          <h1 class="text-lg sm:text-xl font-semibold text-ink leading-tight truncate">Трекер заявок</h1>
-          <p class="text-xs text-gray-500 hidden sm:block">Мини-CRM для студии уборки</p>
-        </div>
+<body class="min-h-screen bg-slate-100 text-slate-900">
+  <main class="mx-auto max-w-7xl space-y-5 p-4 md:p-8">
+    <header class="flex flex-wrap items-center justify-between gap-3 rounded-2xl border border-slate-200 bg-white p-4 shadow-sm">
+      <div>
+        <h1 class="text-xl font-bold md:text-2xl">Заявки</h1>
+        <p class="text-sm text-slate-500">
+          Перетащи карточку в нужный статус. Данные сохраняются в браузере.
+        </p>
       </div>
-      <div class="flex items-center gap-3">
-        <span id="total-badge" class="hidden sm:inline-flex items-center gap-1.5 text-sm text-gray-500">
-          <span id="total-count" class="font-semibold text-ink">0</span> заявок
-        </span>
-        <button id="new-btn" class="inline-flex items-center gap-2 rounded-card bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2.5 shadow-soft transition-colors active:scale-[.98]">
-          <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round">
-            <path d="M12 5v14M5 12h14" />
-          </svg>
-          <span class="whitespace-nowrap">Новая заявка</span>
+
+      <div class="flex flex-wrap items-center gap-2">
+        <input
+          id="searchInput"
+          type="search"
+          placeholder="Поиск по имени или услуге"
+          class="w-64 rounded-xl border border-slate-300 px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+        />
+        <button
+          id="clearSearch"
+          class="rounded-xl border border-slate-300 px-3 py-2 text-sm hover:bg-slate-50"
+        >
+          Сброс
+        </button>
+        <button
+          id="openModalBtn"
+          class="rounded-xl bg-slate-900 px-4 py-2 text-sm font-semibold text-white hover:bg-slate-700"
+        >
+          + Новая заявка
         </button>
       </div>
-    </div>
-  </header>
+    </header>
 
-  <!-- Board -->
-  <main class="mx-auto max-w-7xl px-4 sm:px-6 py-6">
-    <div id="board" class="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-4 gap-4 items-start"></div>
+    <section
+      id="board"
+      class="grid grid-cols-1 gap-4 md:grid-cols-2 xl:grid-cols-4"
+    ></section>
   </main>
 
-  <!-- Modal -->
-  <div id="modal" class="hidden modal-backdrop fixed inset-0 z-30 bg-gray-900/40 backdrop-blur-sm flex items-center justify-center p-4">
-    <div class="modal-panel w-full max-w-md bg-white rounded-2xl shadow-lift overflow-hidden">
-      <div class="px-6 pt-6 pb-2">
-        <h2 class="text-lg font-semibold text-ink">Новая заявка</h2>
-        <p class="text-sm text-gray-500 mt-0.5">Заявка появится в колонке «Новая заявка»</p>
+  <!-- Модальное окно -->
+  <div
+    id="modal"
+    class="hidden fixed inset-0 z-50 bg-slate-900/40 p-4 backdrop-blur-sm"
+  >
+    <div class="mx-auto mt-16 w-full max-w-lg rounded-2xl border border-slate-200 bg-white p-6 shadow-xl">
+      <div class="flex items-center justify-between">
+        <h2 class="text-lg font-bold">Новая заявка</h2>
+        <button
+          id="closeModalBtn"
+          class="rounded-lg px-2 py-1 text-slate-400 hover:bg-slate-100 hover:text-slate-700"
+        >
+          ✕
+        </button>
       </div>
-      <form id="form" class="px-6 pb-6 space-y-4">
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5" for="f-name">Имя клиента</label>
-          <input id="f-name" name="name" type="text" required autocomplete="off"
-            class="w-full rounded-card border border-gray-300 px-3.5 text-sm text-ink placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="Например, Анна Смирнова" />
+
+      <form id="leadForm" class="mt-4 space-y-4">
+        <div class="grid gap-4 md:grid-cols-2">
+          <label class="space-y-1 text-sm">
+            <span>Имя клиента</span>
+            <input
+              id="leadName"
+              required
+              class="w-full rounded-xl border border-slate-300 px-3 py-2"
+              placeholder="Иван Петров"
+            />
+          </label>
+
+          <label class="space-y-1 text-sm">
+            <span>Услуга</span>
+            <input
+              id="leadService"
+              required
+              class="w-full rounded-xl border border-slate-300 px-3 py-2"
+              placeholder="Настройка рекламы"
+            />
+          </label>
+
+          <label class="space-y-1 text-sm">
+            <span>Дата</span>
+            <input
+              id="leadDate"
+              type="date"
+              class="w-full rounded-xl border border-slate-300 px-3 py-2"
+            />
+          </label>
+
+          <label class="space-y-1 text-sm">
+            <span>Сумма, ₽</span>
+            <input
+              id="leadAmount"
+              type="number"
+              min="0"
+              step="1000"
+              class="w-full rounded-xl border border-slate-300 px-3 py-2"
+              placeholder="15000"
+            />
+          </label>
         </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5" for="f-phone">Телефон</label>
-          <input id="f-phone" name="phone" type="tel" autocomplete="off"
-            class="w-full rounded-card border border-gray-300 px-3.5 text-sm text-ink placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500"
-            placeholder="+7 (900) 000-00-00" />
-        </div>
-        <div>
-          <label class="block text-sm font-medium text-gray-700 mb-1.5" for="f-service">Услуга</label>
-          <select id="f-service" name="service" required
-            class="w-full rounded-card border border-gray-300 px-3.5 text-sm text-ink bg-white focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500">
-            <option value="Генеральная уборка">Генеральная уборка</option>
-            <option value="Поддерживающая уборка">Поддерживающая уборка</option>
-            <option value="Уборка после ремонта">Уборка после ремонта</option>
-            <option value="Комплексная уборка офиса">Комплексная уборка офиса</option>
-            <option value="Химчистка дивана">Химчистка дивана</option>
-            <option value="Химчистка ковров">Химчистка ковров</option>
-            <option value="Мойка окон">Мойка окон</option>
-            <option value="Мытьё витрин">Мытьё витрин</option>
-          </select>
-        </div>
-        <div class="grid grid-cols-2 gap-4">
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="f-date">Дата</label>
-            <input id="f-date" name="date" type="date" required
-              class="w-full rounded-card border border-gray-300 px-3.5 text-sm text-ink focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-          </div>
-          <div>
-            <label class="block text-sm font-medium text-gray-700 mb-1.5" for="f-amount">Сумма, ₽</label>
-            <input id="f-amount" name="amount" type="number" inputmode="numeric" min="0" required placeholder="7000"
-              class="w-full rounded-card border border-gray-300 px-3.5 text-sm text-ink placeholder-gray-400 focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-blue-500" />
-          </div>
-        </div>
-        <div class="flex items-center justify-end gap-3 pt-2">
-          <button type="button" id="cancel-btn" class="rounded-card border border-gray-300 text-gray-700 text-sm font-medium px-4 py-2.5 hover:bg-gray-50 transition-colors">Отмена</button>
-          <button type="submit" class="rounded-card bg-blue-500 hover:bg-blue-600 text-white text-sm font-medium px-4 py-2.5 shadow-soft transition-colors active:scale-[.98]">Добавить</button>
+
+        <label class="space-y-1 text-sm">
+          <span>Статус</span>
+          <select
+            id="leadStatus"
+            class="w-full rounded-xl border border-slate-300 px-3 py-2"
+          ></select>
+        </label>
+
+        <div class="flex justify-end gap-2">
+          <button
+            type="button"
+            id="cancelBtn"
+            class="rounded-xl border border-slate-300 px-4 py-2 hover:bg-slate-50"
+          >
+            Отмена
+          </button>
+          <button
+            type="submit"
+            class="rounded-xl bg-slate-900 px-4 py-2 font-semibold text-white hover:bg-slate-700"
+          >
+            Создать
+          </button>
         </div>
       </form>
     </div>
   </div>
 
-<script>
-  // ---- Config ----
-  const COLUMNS = [
-    { key: "new",    title: "Новая заявка",   dot: "#9ca3af", badge: "bg-gray-100 text-gray-600" },
-    { key: "work",   title: "В работе",       dot: "#f59e0b", badge: "bg-amber-100 text-amber-700" },
-    { key: "confirm",title: "Подтверждено",   dot: "#3b82f6", badge: "bg-blue-100 text-blue-700" },
-    { key: "done",   title: "Завершено",      dot: "#22c55e", badge: "bg-green-100 text-green-700" },
-  ];
-  const STATUS_COLORS = { new: "#9ca3af", work: "#f59e0b", confirm: "#3b82f6", done: "#22c55e" };
+  <script>
+    const STORAGE_KEY = 'mini-crm-leads-v1';
 
-  // ---- Mock data ----
-  let requests = [
-    { id: 1, name: "Анна Смирнова",    phone: "+7 (916) 123-45-67", service: "Генеральная уборка",           date: "15.10.2026", amount: 7600,  status: "new" },
-    { id: 2, name: "Иван Петров",      phone: "+7 (921) 555-12-88", service: "Химчистка дивана",             date: "14.10.2026", amount: 5000,  status: "new" },
-    { id: 3, name: "Елена Соколова",   phone: "+7 (903) 740-21-09", service: "Химчистка ковров",             date: "15.10.2026", amount: 4500,  status: "new" },
-    { id: 4, name: "Мария К.",         phone: "+7 (985) 012-34-56", service: "Мойка окон",                   date: "13.10.2026", amount: 3000,  status: "work" },
-    { id: 5, name: "ООО ТехСервис",    phone: "+7 (495) 640-11-22", service: "Мытьё витрин",                 date: "12.10.2026", amount: 9800,  status: "work" },
-    { id: 6, name: "ООО Ромашка",      phone: "+7 (812) 300-45-78", service: "Комплексная уборка офиса",     date: "12.10.2026", amount: 15000, status: "confirm" },
-    { id: 7, name: "Цех №2",           phone: "+7 (911) 888-90-12", service: "Уборка производственных помещений", date: "11.10.2026", amount: 21000, status: "confirm" },
-    { id: 8, name: "Алексей В.",       phone: "+7 (926) 710-33-44", service: "Уборка после ремонта",        date: "10.10.2026", amount: 12000, status: "done" },
-    { id: 9, name: "Дмитрий Орлов",    phone: "+7 (906) 279-04-56", service: "Генеральная уборка",           date: "09.10.2026", amount: 8200,  status: "done" },
-  ];
-  let seq = 10;
+    const STATUSES = [
+      {
+        id: 'new',
+        title: 'Новая',
+        accent: 'bg-sky-500',
+        badge: 'bg-sky-100 text-sky-700'
+      },
+      {
+        id: 'in-progress',
+        title: 'В работе',
+        accent: 'bg-amber-500',
+        badge: 'bg-amber-100 text-amber-700'
+      },
+      {
+        id: 'confirmed',
+        title: 'Подтверждено',
+        accent: 'bg-violet-500',
+        badge: 'bg-violet-100 text-violet-700'
+      },
+      {
+        id: 'done',
+        title: 'Завершено',
+        accent: 'bg-emerald-500',
+        badge: 'bg-emerald-100 text-emerald-700'
+      }
+    ];
 
-  // ---- Helpers ----
-  const fmtMoney = (n) => n.toLocaleString("ru-RU") + " ₽";
-  const $ = (sel) => document.querySelector(sel);
-  const statusIndex = (k) => COLUMNS.findIndex(c => c.key === k);
+    const board = document.getElementById('board');
+    const searchInput = document.getElementById('searchInput');
+    const clearSearch = document.getElementById('clearSearch');
+    const modal = document.getElementById('modal');
+    const openModalBtn = document.getElementById('openModalBtn');
+    const closeModalBtn = document.getElementById('closeModalBtn');
+    const cancelBtn = document.getElementById('cancelBtn');
+    const leadForm = document.getElementById('leadForm');
+    const leadStatus = document.getElementById('leadStatus');
 
-  const chevron = (dir, disabled) =>
-    `<button ${disabled ? "disabled" : ""} class="move-btn ${disabled ? "opacity-30 cursor-not-allowed" : "text-gray-400 hover:text-blue-600 hover:border-blue-500"} border border-gray-200 rounded-card p-1.5 transition-colors" data-dir="${dir}" aria-label="${dir === -1 ? "Назад" : "Вперёд"}">
-       <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
-         ${dir === -1 ? '<path d="M15 18l-6-6 6-6" />' : '<path d="M9 6l6 6-6 6" />'}
-       </svg>
-     </button>`;
+    let searchQuery = '';
+    let leads = loadLeads();
 
-  function cardHTML(req) {
-    const idx = statusIndex(req.status);
-    const canPrev = idx > 0;
-    const canNext = idx < COLUMNS.length - 1;
-    const justMoved = req.id === lastMovedId ? " just-moved" : "";
-    return `
-      <article draggable="true" class="card${justMoved} group cursor-grab active:cursor-grabbing bg-white rounded-card border border-gray-100 p-4 shadow-soft hover:shadow-lift transition-shadow" data-id="${req.id}">
-        <div class="flex items-start justify-between gap-2">
-          <div class="min-w-0">
-            <h3 class="font-semibold text-ink text-[15px] leading-snug truncate">${escapeHTML(req.name)}</h3>
-            <p class="text-sm text-gray-500 mt-0.5 truncate">${escapeHTML(req.service)}</p>
-          </div>
-          <span class="shrink-0 h-2 w-2 rounded-full mt-1.5" style="background:${STATUS_COLORS[req.status]}"></span>
-        </div>
-        <div class="mt-3 pt-3 border-t border-gray-100 flex items-center justify-between">
-          <span class="text-xs text-gray-500">${escapeHTML(req.date)}</span>
-          <span class="text-sm font-semibold text-ink">${fmtMoney(req.amount)}</span>
-        </div>
-        <div class="mt-3 flex items-center justify-between">
-          ${chevron(-1, !canPrev)}
-          <span class="text-[11px] font-medium uppercase tracking-wider text-gray-400 hidden sm:block group-hover:text-gray-500 transition-colors">${COLUMNS[idx].title}</span>
-          ${chevron(1, !canNext)}
-        </div>
-      </article>`;
-  }
+    initStatusSelect();
+    renderBoard();
+    bindStaticEvents();
 
-  function escapeHTML(s) {
-    return String(s).replace(/[&<>"']/g, (c) => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
-  }
+    function initStatusSelect() {
+      leadStatus.innerHTML = STATUSES
+        .map((status) => `<option value="${status.id}">${status.title}</option>`)
+        .join('');
+    }
 
-  // ---- Render ----
-  let lastMovedId = null;
+    function bindStaticEvents() {
+      searchInput.addEventListener('input', () => {
+        searchQuery = searchInput.value;
+        renderBoard();
+      });
 
-  function render() {
-    const board = $("#board");
-    board.innerHTML = COLUMNS.map(col => {
-      const items = requests.filter(r => r.status === col.key);
-      const cards = items.map(cardHTML).join("") ||
-        `<div class="rounded-card border-2 border-dashed border-gray-200 p-6 text-center text-sm text-gray-400">Нет заявок</div>`;
-      return `
-        <section class="drop-zone rounded-xl bg-gray-50 p-3" data-col="${col.key}">
-          <div class="px-1 pb-2.5 flex items-center justify-between">
-            <div class="flex items-center gap-2 min-w-0">
-              <span class="h-2 w-2 rounded-full shrink-0" style="background:${col.dot}"></span>
-              <h2 class="font-semibold text-gray-700 text-sm truncate">${col.title}</h2>
+      clearSearch.addEventListener('click', () => {
+        searchInput.value = '';
+        searchQuery = '';
+        renderBoard();
+        searchInput.focus();
+      });
+
+      openModalBtn.addEventListener('click', openModal);
+      closeModalBtn.addEventListener('click', closeModal);
+      cancelBtn.addEventListener('click', closeModal);
+
+      modal.addEventListener('click', (event) => {
+        if (event.target === modal) closeModal();
+      });
+
+      document.addEventListener('keydown', (event) => {
+        if (event.key === 'Escape' && !modal.classList.contains('hidden')) {
+          closeModal();
+        }
+      });
+
+      leadForm.addEventListener('submit', (event) => {
+        event.preventDefault();
+
+        const lead = {
+          id: makeId(),
+          name: document.getElementById('leadName').value.trim(),
+          service: document.getElementById('leadService').value.trim(),
+          date: document.getElementById('leadDate').value || todayISO(),
+          amount: Number(document.getElementById('leadAmount').value || 0),
+          status: leadStatus.value || 'new',
+          createdAt: new Date().toISOString()
+        };
+
+        if (!lead.name || !lead.service) return;
+
+        leads.unshift(lead);
+        saveLeads();
+
+        // Чтобы новая запрос был сразу виден, даже если был активен поиск.
+        searchInput.value = '';
+        searchQuery = '';
+
+        closeModal();
+        renderBoard();
+      });
+
+      board.addEventListener('click', (event) => {
+        const deleteButton = event.target.closest('[data-delete]');
+        if (!deleteButton) return;
+
+        const id = deleteButton.dataset.delete;
+
+        if (confirm('Удалить заявку?')) {
+          leads = leads.filter((lead) => lead.id !== id);
+          saveLeads();
+          renderBoard();
+        }
+      });
+    }
+
+    function renderBoard() {
+      const filtered = getFilteredLeads();
+      board.innerHTML = '';
+
+      STATUSES.forEach((status) => {
+        const visible = filtered.filter((lead) => lead.status === status.id);
+        const total = leads.filter((lead) => lead.status === status.id).length;
+
+        const column = document.createElement('section');
+        column.className = 'flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm';
+
+        column.innerHTML = `
+          <div class="flex items-center justify-between border-b border-slate-100 px-4 py-3">
+            <div class="flex items-center gap-2">
+              <span class="h-2.5 w-2.5 rounded-full ${status.accent}"></span>
+              <h2 class="font-semibold">${status.title}</h2>
             </div>
-            <span class="inline-flex items-center justify-center min-w-6 h-6 px-1.5 rounded-full text-xs font-semibold ${col.badge}">${items.length}</span>
+            <span class="rounded-full px-2.5 py-1 text-xs font-semibold ${status.badge}">
+              ${searchQuery ? `${visible.length}/${total}` : total}
+            </span>
           </div>
-          <div class="space-y-3">${cards}</div>
-        </section>`;
-    }).join("");
 
-    // total counters
-    $("#total-count").textContent = requests.length;
-    $("#total-badge").style.display = requests.length ? "inline-flex" : "none";
+          <div
+            class="min-h-[140px] flex-1 space-y-3 rounded-b-2xl p-3 transition"
+            data-drop="${status.id}"
+          >
+            ${visible.map(cardTemplate).join('') || emptyTemplate()}
+          </div>
+        `;
 
-    lastMovedId = null;
-  }
+        board.appendChild(column);
+      });
 
-  // ---- Move card via arrows ----
-  function move(id, dir) {
-    const req = requests.find(r => r.id === id);
-    if (!req) return;
-    const idx = statusIndex(req.status);
-    const next = idx + dir;
-    if (next < 0 || next >= COLUMNS.length) return;
-    req.status = COLUMNS[next].key;
-    lastMovedId = id;
-    render();
-  }
-
-  // ---- Modal ----
-  const modal = $("#modal");
-  const form = $("#form");
-  function openModal() {
-    form.reset();
-    $("#f-date").value = new Date().toISOString().slice(0, 10);
-    modal.classList.remove("hidden");
-    setTimeout(() => $("#f-name").focus(), 60);
-  }
-  function closeModal() { modal.classList.add("hidden"); }
-
-  // ---- Events ----
-  document.addEventListener("click", (e) => {
-    const btn = e.target.closest(".move-btn");
-    if (btn) {
-      const id = Number(btn.closest("article").dataset.id);
-      move(id, Number(btn.dataset.dir));
+      attachDnDHandlers();
     }
-    if (e.target.closest(".modal-backdrop")) closeModal();
-  });
 
-  $("#new-btn").addEventListener("click", openModal);
-  $("#cancel-btn").addEventListener("click", closeModal);
-  document.addEventListener("keydown", (e) => { if (e.key === "Escape") closeModal(); });
+    function cardTemplate(lead) {
+      return `
+        <article
+          draggable="true"
+          data-id="${escapeHtml(lead.id)}"
+          class="cursor-grab rounded-xl border border-slate-200 bg-white p-4 shadow-sm transition hover:-translate-y-0.5 hover:shadow-md active:cursor-grabbing"
+        >
+          <div class="flex items-start justify-between gap-2">
+            <h3 class="font-semibold">${escapeHtml(lead.name)}</h3>
+            <button
+              type="button"
+              data-delete="${escapeHtml(lead.id)}"
+              class="-mr-1 -mt-1 rounded-lg px-2 py-1 text-slate-300 transition hover:bg-rose-50 hover:text-rose-500"
+              title="Удалить"
+            >
+              ✕
+            </button>
+          </div>
 
-  form.addEventListener("submit", (e) => {
-    e.preventDefault();
-    const name = $("#f-name").value.trim();
-    const service = $("#f-service").value;
-    const date = $("#f-date").value;
-    const amount = Number($("#f-amount").value) || 0;
-    const phone = $("#f-phone").value.trim();
-    if (!name || !service || !date) return;
+          <p class="mt-1 text-sm text-slate-500">${escapeHtml(lead.service)}</p>
 
-    const dateStr = date.split("-").reverse().join(".");
-    requests.unshift({ id: seq++, name, phone, service, date: dateStr, amount, status: "new" });
-    closeModal();
-    render();
-  });
-
-  // ---- Drag & drop (bonus, arrows still work) ----
-  let dragId = null;
-  document.addEventListener("dragstart", (e) => {
-    const card = e.target.closest("[draggable=true]");
-    if (!card) return;
-    dragId = Number(card.dataset.id);
-    e.dataTransfer.effectAllowed = "move";
-    card.classList.add("opacity-50");
-  });
-  document.addEventListener("dragend", (e) => {
-    const card = e.target.closest("[draggable=true]");
-    if (card) card.classList.remove("opacity-50");
-    dragId = null;
-    document.querySelectorAll(".drop-zone").forEach(z => z.classList.remove("drag-over"));
-  });
-  document.addEventListener("dragover", (e) => {
-    const col = e.target.closest(".drop-zone");
-    if (!col || dragId === null) return;
-    e.preventDefault();
-    e.dataTransfer.dropEffect = "move";
-    document.querySelectorAll(".drop-zone").forEach(z => z.classList.remove("drag-over"));
-    col.classList.add("drag-over");
-  });
-  document.addEventListener("drop", (e) => {
-    const col = e.target.closest(".drop-zone");
-    if (!col || dragId === null) return;
-    e.preventDefault();
-    const req = requests.find(r => r.id === dragId);
-    if (req && req.status !== col.dataset.col) {
-      req.status = col.dataset.col;
-      lastMovedId = dragId;
-      render();
+          <div class="mt-3 flex items-center justify-between text-sm">
+            <span class="text-slate-500">${formatDate(lead.date)}</span>
+            <span class="font-semibold">${formatMoney(lead.amount)}</span>
+          </div>
+        </article>
+      `;
     }
-  });
 
-  render();
-</script>
+    function emptyTemplate() {
+      return `
+        <div class="rounded-xl border border-dashed border-slate-200 p-4 text-center text-sm text-slate-400">
+          Пусто
+        </div>
+      `;
+    }
+
+    function attachDnDHandlers() {
+      document.querySelectorAll('[draggable="true"]').forEach((card) => {
+        card.addEventListener('dragstart', (event) => {
+          event.dataTransfer.setData('text/plain', card.dataset.id);
+          event.dataTransfer.effectAllowed = 'move';
+
+          setTimeout(() => {
+            card.classList.add('opacity-40');
+          }, 0);
+        });
+
+        card.addEventListener('dragend', () => {
+          card.classList.remove('opacity-40');
+        });
+      });
+
+      document.querySelectorAll('[data-drop]').forEach((zone) => {
+        zone.addEventListener('dragover', (event) => {
+          event.preventDefault();
+          event.dataTransfer.dropEffect = 'move';
+          zone.classList.add('bg-slate-50', 'ring-2', 'ring-slate-300');
+        });
+
+        zone.addEventListener('dragleave', (event) => {
+          if (!zone.contains(event.relatedTarget)) {
+            zone.classList.remove('bg-slate-50', 'ring-2', 'ring-slate-300');
+          }
+        });
+
+        zone.addEventListener('drop', (event) => {
+          event.preventDefault();
+
+          const id = event.dataTransfer.getData('text/plain');
+          const status = zone.dataset.drop;
+
+          moveLead(id, status);
+          zone.classList.remove('bg-slate-50', 'ring-2', 'ring-slate-300');
+        });
+      });
+    }
+
+    function moveLead(id, status) {
+      const lead = leads.find((item) => item.id === id);
+      if (!lead || lead.status === status) return;
+
+      lead.status = status;
+      saveLeads();
+      renderBoard();
+    }
+
+    function getFilteredLeads() {
+      const query = searchQuery.trim().toLowerCase();
+
+      if (!query) return leads;
+
+      return leads.filter((lead) =>
+        `${lead.name} ${lead.service}`.toLowerCase().includes(query)
+      );
+    }
+
+    function loadLeads() {
+      try {
+        const raw = localStorage.getItem(STORAGE_KEY);
+
+        if (!raw) {
+          return saveAndReturn(defaultLeads());
+        }
+
+        const parsed = JSON.parse(raw);
+
+        if (!Array.isArray(parsed)) {
+          return saveAndReturn(defaultLeads());
+        }
+
+        const validStatuses = new Set(STATUSES.map((status) => status.id));
+
+        return parsed.map((lead) => ({
+          id: lead.id || makeId(),
+          name: lead.name || 'Без имени',
+          service: lead.service || 'Без услуги',
+          date: lead.date || todayISO(),
+          amount: Number(lead.amount || 0),
+          status: validStatuses.has(lead.status) ? lead.status : 'new',
+          createdAt: lead.createdAt || new Date().toISOString()
+        }));
+      } catch (error) {
+        console.warn('Не удалось загрузить данные из localStorage:', error);
+        return defaultLeads();
+      }
+    }
+
+    function saveLeads() {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(leads));
+      } catch (error) {
+        console.warn('localStorage недоступен:', error);
+      }
+    }
+
+    function saveAndReturn(data) {
+      try {
+        localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
+      } catch (error) {
+        console.warn('localStorage недоступен:', error);
+      }
+
+      return data;
+    }
+
+    function defaultLeads() {
+      // Если не нужны демо-данные, можно вернуть пустой массив:
+      // return [];
+
+      return [
+        {
+          id: makeId(),
+          name: 'Анна Смирнова',
+          service: 'Консультация',
+          date: todayISO(0),
+          amount: 5000,
+          status: 'new',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: makeId(),
+          name: 'Иван Петров',
+          service: 'Настройка таргета',
+          date: todayISO(1),
+          amount: 25000,
+          status: 'in-progress',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: makeId(),
+          name: 'ООО «Ромашка»',
+          service: 'Аудит воронки',
+          date: todayISO(-1),
+          amount: 40000,
+          status: 'confirmed',
+          createdAt: new Date().toISOString()
+        },
+        {
+          id: makeId(),
+          name: 'Мария Иванова',
+          service: 'Сайт-визитка',
+          date: todayISO(-3),
+          amount: 90000,
+          status: 'done',
+          createdAt: new Date().toISOString()
+        }
+      ];
+    }
+
+    function openModal() {
+      modal.classList.remove('hidden');
+      document.getElementById('leadName').focus();
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      leadForm.reset();
+      leadStatus.value = 'new';
+    }
+
+    function makeId() {
+      if (window.crypto && typeof crypto.randomUUID === 'function') {
+        return crypto.randomUUID();
+      }
+
+      return `lead-${Date.now()}-${Math.random().toString(16).slice(2)}`;
+    }
+
+    function todayISO(offsetDays = 0) {
+      const date = new Date(Date.now() + offsetDays * 86400000);
+      return date.toLocaleDateString('sv-SE');
+    }
+
+    function formatDate(value) {
+      if (!value) return 'Без даты';
+
+      if (/^\d{4}-\d{2}-\d{2}$/.test(value)) {
+        const [year, month, day] = value.split('-').map(Number);
+        const date = new Date(year, month - 1, day);
+
+        return date.toLocaleDateString('ru-RU', {
+          day: '2-digit',
+          month: 'short',
+          year: 'numeric'
+        });
+      }
+
+      const date = new Date(value);
+
+      if (Number.isNaN(date.getTime())) {
+        return escapeHtml(value);
+      }
+
+      return date.toLocaleDateString('ru-RU', {
+        day: '2-digit',
+        month: 'short',
+        year: 'numeric'
+      });
+    }
+
+    function formatMoney(value) {
+      return new Intl.NumberFormat('ru-RU', {
+        style: 'currency',
+        currency: 'RUB',
+        maximumFractionDigits: 0
+      }).format(Number(value || 0));
+    }
+
+    function escapeHtml(value) {
+      return String(value ?? '').replace(/[&<>"']/g, (char) => ({
+        '&': '&amp;',
+        '<': '&lt;',
+        '>': '&gt;',
+        '"': '&quot;',
+        "'": '&#39;'
+      }[char]));
+    }
+  </script>
 </body>
 </html>
