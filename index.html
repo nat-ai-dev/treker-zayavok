@@ -109,9 +109,11 @@
             <span>Услуга</span>
             <input
               id="leadService"
+              list="serviceSuggestions"
               required
               class="w-full rounded-xl border border-slate-300 px-3 py-2"
               placeholder="Настройка рекламы"
+              autocomplete="off"
             />
           </label>
 
@@ -136,6 +138,8 @@
             />
           </label>
         </div>
+
+        <datalist id="serviceSuggestions"></datalist>
 
         <label class="space-y-1 text-sm">
           <span>Статус</span>
@@ -219,6 +223,7 @@
     const leadDateInput = document.getElementById('leadDate');
     const leadAmountInput = document.getElementById('leadAmount');
     const leadStatus = document.getElementById('leadStatus');
+    const serviceSuggestions = document.getElementById('serviceSuggestions');
 
     let searchQuery = '';
     let serviceFilter = '';
@@ -275,8 +280,8 @@
       leadForm.addEventListener('submit', (event) => {
         event.preventDefault();
 
-        const name = leadNameInput.value.trim();
-        const service = leadServiceInput.value.trim();
+        const name = cleanText(leadNameInput.value);
+        let service = cleanText(leadServiceInput.value);
 
         if (!name || !service) return;
 
@@ -290,7 +295,7 @@
 
           if (lead) {
             lead.name = name;
-            lead.service = service;
+            lead.service = canonicalServiceName(service, editingId);
             lead.date = date;
             lead.amount = amount;
             lead.status = status;
@@ -306,7 +311,7 @@
         const lead = {
           id: makeId(),
           name,
-          service,
+          service: canonicalServiceName(service),
           date,
           amount,
           status,
@@ -358,6 +363,61 @@
 
         moveLead(select.dataset.moveSelect, select.value);
       });
+    }
+
+    function openModal(lead) {
+      updateServiceSuggestions();
+
+      if (lead) {
+        editingId = lead.id;
+        modalTitle.textContent = 'Редактирование заявки';
+        submitBtn.textContent = 'Сохранить';
+
+        leadNameInput.value = lead.name;
+        leadServiceInput.value = lead.service;
+        leadDateInput.value = lead.date || '';
+        leadAmountInput.value = lead.amount || '';
+        leadStatus.value = lead.status;
+      } else {
+        editingId = null;
+        modalTitle.textContent = 'Новая заявка';
+        submitBtn.textContent = 'Создать';
+      }
+
+      modal.classList.remove('hidden');
+      leadNameInput.focus();
+    }
+
+    function closeModal() {
+      modal.classList.add('hidden');
+      leadForm.reset();
+      leadStatus.value = 'new';
+      editingId = null;
+      modalTitle.textContent = 'Новая заявка';
+      submitBtn.textContent = 'Создать';
+    }
+
+    function updateServiceSuggestions() {
+      const services = [...new Set(leads.map((lead) => lead.service))]
+        .sort((a, b) => a.localeCompare(b, 'ru'));
+
+      serviceSuggestions.innerHTML = services
+        .map((service) => `<option value="${escapeHtml(service)}"></option>`)
+        .join('');
+    }
+
+    function cleanText(value) {
+      return String(value || '').replace(/\s+/g, ' ').trim();
+    }
+
+    function canonicalServiceName(value, excludeId = null) {
+      const match = leads.find(
+        (lead) =>
+          lead.id !== excludeId &&
+          lead.service.toLowerCase() === value.toLowerCase()
+      );
+
+      return match ? match.service : value;
     }
 
     function exportLeads() {
@@ -427,36 +487,6 @@
       };
 
       reader.readAsText(file);
-    }
-
-    function openModal(lead) {
-      if (lead) {
-        editingId = lead.id;
-        modalTitle.textContent = 'Редактирование заявки';
-        submitBtn.textContent = 'Сохранить';
-
-        leadNameInput.value = lead.name;
-        leadServiceInput.value = lead.service;
-        leadDateInput.value = lead.date || '';
-        leadAmountInput.value = lead.amount || '';
-        leadStatus.value = lead.status;
-      } else {
-        editingId = null;
-        modalTitle.textContent = 'Новая заявка';
-        submitBtn.textContent = 'Создать';
-      }
-
-      modal.classList.remove('hidden');
-      leadNameInput.focus();
-    }
-
-    function closeModal() {
-      modal.classList.add('hidden');
-      leadForm.reset();
-      leadStatus.value = 'new';
-      editingId = null;
-      modalTitle.textContent = 'Новая заявка';
-      submitBtn.textContent = 'Создать';
     }
 
     function updateServiceFilter() {
