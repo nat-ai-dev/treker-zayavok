@@ -18,6 +18,11 @@
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
+        <select
+          id="serviceFilterSelect"
+          class="rounded-xl border border-slate-300 bg-white px-3 py-2 text-sm focus:border-slate-500 focus:outline-none"
+          title="Фильтр по услуге"
+        ></select>
         <input
           id="searchInput"
           type="search"
@@ -27,7 +32,7 @@
         <button
           id="clearSearch"
           class="inline-flex items-center gap-1.5 rounded-xl border border-slate-200 px-3 py-2 text-sm text-slate-500 hover:bg-slate-100 hover:text-slate-700"
-          title="Сбросить поиск"
+          title="Сбросить поиск и фильтр"
         >
           <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="2" stroke="currentColor" class="h-4 w-4">
             <path stroke-linecap="round" stroke-linejoin="round" d="M16.023 9.348h4.992v-.001M2.985 19.644v-4.992m0 0h4.992m-4.993 0 3.181 3.183a8.25 8.25 0 0 0 13.803-3.7M4.031 9.865a8.25 8.25 0 0 1 13.803-3.7l3.181 3.182m0-4.991v4.99" />
@@ -196,6 +201,7 @@
 
     const board = document.getElementById('board');
     const boardSummary = document.getElementById('boardSummary');
+    const serviceFilterSelect = document.getElementById('serviceFilterSelect');
     const searchInput = document.getElementById('searchInput');
     const clearSearch = document.getElementById('clearSearch');
     const exportBtn = document.getElementById('exportBtn');
@@ -215,6 +221,7 @@
     const leadStatus = document.getElementById('leadStatus');
 
     let searchQuery = '';
+    let serviceFilter = '';
     let editingId = null;
     let leads = loadLeads();
 
@@ -229,6 +236,11 @@
     }
 
     function bindStaticEvents() {
+      serviceFilterSelect.addEventListener('change', () => {
+        serviceFilter = serviceFilterSelect.value;
+        renderBoard();
+      });
+
       searchInput.addEventListener('input', () => {
         searchQuery = searchInput.value;
         renderBoard();
@@ -237,6 +249,7 @@
       clearSearch.addEventListener('click', () => {
         searchInput.value = '';
         searchQuery = '';
+        serviceFilter = '';
         renderBoard();
         searchInput.focus();
       });
@@ -303,9 +316,10 @@
         leads.unshift(lead);
         saveLeads();
 
-        // Чтобы новая заявка была сразу видна, даже если был активен поиск.
+        // Чтобы новая заявка была сразу видна, даже если были активны поиск или фильтр.
         searchInput.value = '';
         searchQuery = '';
+        serviceFilter = '';
 
         closeModal();
         renderBoard();
@@ -400,6 +414,7 @@
 
           searchInput.value = '';
           searchQuery = '';
+          serviceFilter = '';
 
           renderBoard();
         } catch (error) {
@@ -444,12 +459,38 @@
       submitBtn.textContent = 'Создать';
     }
 
+    function updateServiceFilter() {
+      const counts = new Map();
+
+      leads.forEach((lead) => {
+        counts.set(lead.service, (counts.get(lead.service) || 0) + 1);
+      });
+
+      // Если выбранной услуги больше нет в данных — сбрасываем фильтр.
+      if (serviceFilter && !counts.has(serviceFilter)) {
+        serviceFilter = '';
+      }
+
+      const services = [...counts.keys()].sort((a, b) => a.localeCompare(b, 'ru'));
+
+      serviceFilterSelect.innerHTML = [
+        `<option value="">Все услуги (${leads.length})</option>`,
+        ...services.map((service) =>
+          `<option value="${escapeHtml(service)}"${service === serviceFilter ? ' selected' : ''}>${escapeHtml(service)} (${counts.get(service)})</option>`
+        )
+      ].join('');
+    }
+
     function renderBoard() {
+      updateServiceFilter();
+
       const filtered = getFilteredLeads();
+      const anyFilter = Boolean(searchQuery.trim() || serviceFilter);
+
       board.innerHTML = '';
 
       // Сводка по всей доске в шапке.
-      if (searchQuery) {
+      if (anyFilter) {
         boardSummary.textContent =
           `Найдено: ${filtered.length} из ${leads.length}, на ${formatMoney(sumLeads(filtered))}`;
       } else {
@@ -474,7 +515,7 @@
               <h2 class="font-semibold">${status.title}</h2>
             </div>
             <span class="rounded-full px-2.5 py-1 text-xs font-semibold ${status.badge}">
-              ${searchQuery ? `${visible.length}/${statusLeads.length}` : statusLeads.length}
+              ${anyFilter ? `${visible.length}/${statusLeads.length}` : statusLeads.length}
             </span>
           </div>
 
@@ -491,7 +532,7 @@
               Сумма
             </span>
             <span class="text-sm font-bold">
-              ${formatMoney(visibleSum)}${searchQuery ? `<span class="font-normal opacity-60"> из ${formatMoney(totalSum)}</span>` : ''}
+              ${formatMoney(visibleSum)}${anyFilter ? `<span class="font-normal opacity-60"> из ${formatMoney(totalSum)}</span>` : ''}
             </span>
           </div>
         `;
@@ -605,11 +646,13 @@
     function getFilteredLeads() {
       const query = searchQuery.trim().toLowerCase();
 
-      if (!query) return leads;
+      return leads.filter((lead) => {
+        const matchesService = !serviceFilter || lead.service === serviceFilter;
+        const matchesQuery =
+          !query || `${lead.name} ${lead.service}`.toLowerCase().includes(query);
 
-      return leads.filter((lead) =>
-        `${lead.name} ${lead.service}`.toLowerCase().includes(query)
-      );
+        return matchesService && matchesQuery;
+      });
     }
 
     function sumLeads(list) {
