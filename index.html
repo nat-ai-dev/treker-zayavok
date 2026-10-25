@@ -14,6 +14,7 @@
         <p class="text-sm text-slate-500">
           Перетащи карточку — сменится статус. Клик по карточке — редактирование. Данные сохраняются в браузере.
         </p>
+        <p id="boardSummary" class="mt-1 text-sm font-medium text-slate-600"></p>
       </div>
 
       <div class="flex flex-wrap items-center gap-2">
@@ -163,6 +164,7 @@
     ];
 
     const board = document.getElementById('board');
+    const boardSummary = document.getElementById('boardSummary');
     const searchInput = document.getElementById('searchInput');
     const clearSearch = document.getElementById('clearSearch');
     const modal = document.getElementById('modal');
@@ -329,9 +331,20 @@
       const filtered = getFilteredLeads();
       board.innerHTML = '';
 
+      // Сводка по всей доске в шапке.
+      if (searchQuery) {
+        boardSummary.textContent =
+          `Найдено: ${filtered.length} из ${leads.length}, на ${formatMoney(sumLeads(filtered))}`;
+      } else {
+        boardSummary.textContent =
+          `На доске: ${leads.length} ${pluralize(leads.length, ['заявка', 'заявки', 'заявок'])} на ${formatMoney(sumLeads(leads))}`;
+      }
+
       STATUSES.forEach((status) => {
+        const statusLeads = leads.filter((lead) => lead.status === status.id);
         const visible = filtered.filter((lead) => lead.status === status.id);
-        const total = leads.filter((lead) => lead.status === status.id).length;
+        const visibleSum = sumLeads(visible);
+        const totalSum = sumLeads(statusLeads);
 
         const column = document.createElement('section');
         column.className = 'flex flex-col rounded-2xl border border-slate-200 bg-white shadow-sm';
@@ -343,15 +356,22 @@
               <h2 class="font-semibold">${status.title}</h2>
             </div>
             <span class="rounded-full px-2.5 py-1 text-xs font-semibold ${status.badge}">
-              ${searchQuery ? `${visible.length}/${total}` : total}
+              ${searchQuery ? `${visible.length}/${statusLeads.length}` : statusLeads.length}
             </span>
           </div>
 
           <div
-            class="min-h-[140px] flex-1 space-y-3 rounded-b-2xl p-3 transition"
+            class="min-h-[140px] flex-1 space-y-3 rounded-none p-3 transition"
             data-drop="${status.id}"
           >
             ${visible.map(cardTemplate).join('') || emptyTemplate()}
+          </div>
+
+          <div class="flex items-center justify-between border-t border-slate-100 px-4 py-2">
+            <span class="text-xs font-medium uppercase tracking-wide text-slate-400">Сумма</span>
+            <span class="text-sm font-semibold text-slate-700">
+              ${formatMoney(visibleSum)}${searchQuery ? `<span class="font-normal text-slate-400"> из ${formatMoney(totalSum)}</span>` : ''}
+            </span>
           </div>
         `;
 
@@ -457,6 +477,21 @@
       return leads.filter((lead) =>
         `${lead.name} ${lead.service}`.toLowerCase().includes(query)
       );
+    }
+
+    function sumLeads(list) {
+      return list.reduce((acc, lead) => acc + (Number(lead.amount) || 0), 0);
+    }
+
+    function pluralize(count, forms) {
+      const n = Math.abs(count) % 100;
+      const last = n % 10;
+
+      if (n > 10 && n < 20) return forms[2];
+      if (last > 1 && last < 5) return forms[1];
+      if (last === 1) return forms[0];
+
+      return forms[2];
     }
 
     function loadLeads() {
